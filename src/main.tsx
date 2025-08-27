@@ -4,7 +4,6 @@ import App from './App';
 
 createRoot(document.getElementById('root')!).render(<App />);
 
-// Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(console.error);
