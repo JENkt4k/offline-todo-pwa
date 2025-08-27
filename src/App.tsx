@@ -11,131 +11,183 @@ function beep() { try { const ctx = new (window.AudioContext|| (window as any).w
 
 function fmt(ms:number){const s=Math.floor(ms/1000); const m=Math.floor(s/60); const ss=s%60; return `${m}:${String(ss).padStart(2,'0')}`;}
 
+/** Per-list timer state */
+interface TimerState { running: boolean; msLeft: number; endTs: number; selectedTaskId?: string }
+
+type BeforeInstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted'|'dismissed' }> };
+
 export default function App(){
+  /** Lists & tasks */
   const [lists,setLists]=useState<List[]>([]);
   const [tasks,setTasks]=useState<Task[]>([]);
-  const [listName,setListName]=useState('');
-  const [taskText,setTaskText]=useState('');
-  const [taskMinutes,setTaskMinutes]=useState(5);
-  const [activeListId,setActiveListId]=useState<string>('default');
-  const [selectedTaskId,setSelectedTaskId]=useState<string>('');
 
-  // rename control for active list
-  const activeList = useMemo(()=>lists.find(l=>l.id===activeListId)||null,[lists,activeListId]);
-  const [renameValue, setRenameValue] = useState('');
-  useEffect(()=>{ setRenameValue(activeList?.name || ''); }, [activeListId, activeList?.name]);
+  /** Per-list timers (map by listId) */
+  const [timers, setTimers] = useState<Record<string, TimerState>>({});
 
-  const {msLeft,running,start,pause,resume,stop}=useCountdown();
-  const [durationMin,setDurationMin]=useState(25);
-  const [completeOnFinish,setCompleteOnFinish]=useState(true);
-  const [alarmOnFinish,setAlarmOnFinish]=useState(true);
+  /** New list/task inputs */
+  const [newListName, setNewListName] = useState('');
+  const [newTaskText, setNewTaskText] = useState('');
+  const [newTaskMinutes, setNewTaskMinutes] = useState(5);
 
+  /** PWA install */
+  const [installEvt, setInstallEvt] = useState<BeforeInstallPromptEvent|null>(null);
+  const [installed, setInstalled] = useState(false);
+
+  // Bootstrap from storage
   useEffect(()=>{
     const L=localStorage.getItem('lists');
     const T=localStorage.getItem('tasks');
+    const X=localStorage.getItem('timers');
     const lists0:List[]=L?JSON.parse(L):[{id:'default',name:'My Tasks'}];
     const tasks0:Task[]=T?JSON.parse(T):[];
-    setLists(lists0); setTasks(tasks0);
-    if(!activeListId && lists0.length) setActiveListId(lists0[0].id);
+    const timers0:Record<string,TimerState>=X?JSON.parse(X):{};
+    setLists(lists0); setTasks(tasks0); setTimers(timers0);
   },[]);
   useEffect(()=>localStorage.setItem('lists',JSON.stringify(lists)),[lists]);
   useEffect(()=>localStorage.setItem('tasks',JSON.stringify(tasks)),[tasks]);
+  useEffect(()=>localStorage.setItem('timers',JSON.stringify(timers)),[timers]);
 
-  const prevMsRef=useRef(msLeft);
+  // Global tick updates all running list timers
   useEffect(()=>{
-    if(prevMsRef.current>0 && msLeft===0){
-      if(alarmOnFinish) beep();
-      if(completeOnFinish && selectedTaskId){ setTasks(ts=>ts.map(t=>t.id===selectedTaskId?{...t,done:true}:t)); }
+    const id = window.setInterval(()=>{
+      const now = performance.now();
+      setTimers(prev => {
+        const next = { ...prev };
+        let changed = false;
+        for (const [lid, st] of Object.entries(prev)) {
+          if (!st.running) continue;
+          const left = Math.max(0, st.endTs - now);
+          if (left !== st.msLeft) { next[lid] = { ...st, msLeft: left }; changed = true; }
+          if (left <= 0) {
+            // stop and signal
+            const selectedTaskId = st.selectedTaskId;
+            next[lid] = { running:false, msLeft:0, endTs:0, selectedTaskId };
+            changed = true; beep();
+            if (selectedTaskId) {
+              setTasks(ts=>ts.map(t=>t.id===selectedTaskId?{...t, done:true}:t));
+            }
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 250);
+    return ()=> clearInterval(id);
+  },[setTimers, setTasks]);
+
+  // Install prompt
+  useEffect(()=>{
+    const onBIP = (e: Event) => { e.preventDefault?.(); setInstallEvt(e as BeforeInstallPromptEvent); };
+    const onInstalled = () => { setInstalled(true); setInstallEvt(null); };
+    window.addEventListener('beforeinstallprompt', onBIP as any);
+    window.addEventListener('appinstalled', onInstalled);
+    return ()=>{ window.removeEventListener('beforeinstallprompt', onBIP as any); window.removeEventListener('appinstalled', onInstalled); };
+  },[]);
+
+  /** CRUD lists */
+  const addList=()=>{ if(!newListName.trim())return; const id=crypto.randomUUID(); setLists([...lists,{id,name:newListName.trim()}]); setNewListName(''); };
+  const renameList=(id:string, name:string)=> setLists(ls=>ls.map(l=>l.id===id?{...l,name:name.trim()||l.name}:l));
+  const deleteList=(id:string)=>{ setLists(ls=>ls.filter(l=>l.id!==id)); setTasks(ts=>ts.filter(t=>t.listId!==id)); setTimers(tm=>{ const n={...tm}; delete n[id]; return n; }); };
+
+  /** CRUD tasks */
+  const addTask=(listId:string)=>{ if(!newTaskText.trim())return; const id=crypto.randomUUID(); setTasks([...tasks,{id,text:newTaskText.trim(),done:false,listId,minutes:newTaskMinutes}]); setNewTaskText(''); };
+  const toggleTask=(id:string)=> setTasks(ts=>ts.map(t=>t.id===id?{...t,done:!t.done}:t));
+  const setTaskTime=(id:string,minutes:number)=> setTasks(ts=>ts.map(t=>t.id===id?{...t,minutes:Math.max(1,minutes)}:t));
+  const clearDone=(listId:string)=> setTasks(ts=>ts.filter(t=>!(t.done && t.listId===listId)));
+
+  /** Timer controls per list */
+  const ensureTimer=(listId:string)=> timers[listId] ?? { running:false, msLeft:0, endTs:0, selectedTaskId: undefined };
+  const startTimer=(listId:string, minutes:number, selectedTaskId?:string)=> setTimers(st=>{
+    const endTs = performance.now() + minutes*60*1000;
+    return { ...st, [listId]: { running:true, msLeft: minutes*60*1000, endTs, selectedTaskId } };
+  });
+  const pauseTimer=(listId:string)=> setTimers(st=>{ const t=ensureTimer(listId); if(!t.running) return st; return { ...st, [listId]: { ...t, running:false } };});
+  const resumeTimer=(listId:string)=> setTimers(st=>{ const t=ensureTimer(listId); if(t.running || t.msLeft<=0) return st; const endTs = performance.now() + t.msLeft; return { ...st, [listId]: { ...t, running:true, endTs } };});
+  const stopTimer=(listId:string)=> setTimers(st=>({ ...st, [listId]: { running:false, msLeft:0, endTs:0, selectedTaskId: st[listId]?.selectedTaskId } }));
+  const selectTaskForList=(listId:string, taskId?:string)=> setTimers(st=>({ ...st, [listId]: { ...(st[listId]??{running:false,msLeft:0,endTs:0}), selectedTaskId: taskId } }));
+
+  /** Derived */
+  const tasksByList = useMemo(()=>{
+    const map: Record<string, Task[]> = {};
+    for (const t of tasks) {
+      (map[t.listId] ||= []).push(t);
     }
-    prevMsRef.current=msLeft;
-  },[msLeft,alarmOnFinish,completeOnFinish,selectedTaskId]);
+    return map;
+  },[tasks]);
 
-  const activeTasks=useMemo(()=>tasks.filter(t=>t.listId===activeListId),[tasks,activeListId]);
-  const selectedTask=useMemo(()=>tasks.find(t=>t.id===selectedTaskId)||null,[tasks,selectedTaskId]);
+  const onInstallClick = async () => { if (!installEvt) return; await installEvt.prompt(); try { await installEvt.userChoice; } finally { setInstallEvt(null); } };
 
-  const addList=()=>{ if(!listName.trim())return; const id=crypto.randomUUID(); setLists([...lists,{id,name:listName.trim()}]); setListName(''); setActiveListId(id) };
-  const deleteList=()=>{ if(!activeListId)return; setLists(ls=>ls.filter(l=>l.id!==activeListId)); setTasks(ts=>ts.filter(t=>t.listId!==activeListId)); setActiveListId('default'); setSelectedTaskId(''); };
-  const renameList=()=>{ if(!activeListId) return; setLists(ls=>ls.map(l=>l.id===activeListId?{...l,name:renameValue.trim()||l.name}:l)); };
-
-  const addTask=()=>{ if(!taskText.trim())return; const id=crypto.randomUUID(); setTasks([...tasks,{id,text:taskText.trim(),done:false,listId:activeListId||'default',minutes:taskMinutes}]); setTaskText(''); };
-  const toggleTask=(id:string)=>setTasks(ts=>ts.map(t=>t.id===id?{...t,done:!t.done}:t));
-  const setTaskTime=(id:string,minutes:number)=>{ setTasks(ts=>ts.map(t=>t.id===id?{...t,minutes:Math.max(1,minutes)}:t)); if (id===selectedTaskId) setDurationMin(Math.max(1, minutes)); };
-  const clearDone=()=>setTasks(ts=>ts.filter(t=>!(t.done&&t.listId===activeListId)));
-
-  // Select a task: highlight and sync control time from that task
-  const selectTask=(t:Task)=>{ setSelectedTaskId(t.id); if (t.minutes && t.minutes>0) setDurationMin(t.minutes); };
-
-  // Start timer: use selected task's minutes if available, else the list-level default
-  const startTimerSmart=()=>{ const mins=selectedTask?.minutes||durationMin; setDurationMin(mins); start(mins*60*1000) };
-
-  return(
+  return (
     <div className="container">
-      <h1>Offline To‑Do + Timers</h1>
+      <div className="topbar section">
+        <input placeholder="New list name" value={newListName} onChange={e=>setNewListName(e.target.value)} />
+        <button onClick={addList}>Add List</button>
+        {!installed && installEvt && <button onClick={onInstallClick}>Install App</button>}
+      </div>
 
-      {/* Lists */}
-      <div className="card">
-        <h2>Lists</h2>
+      <div className="section">
         <div className="row">
-          <select value={activeListId} onChange={e=>{setActiveListId(e.target.value); setSelectedTaskId('')}}>
-            {lists.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
-          <input placeholder="New list" value={listName} onChange={e=>setListName(e.target.value)} />
-          <button onClick={addList}>Add List</button>
-          <button onClick={deleteList}>Delete List</button>
-        </div>
-        <div className="row">
-          <input value={renameValue} onChange={e=>setRenameValue(e.target.value)} placeholder="Rename current list" />
-          <button onClick={renameList}>Save Name</button>
+          <input placeholder="New task text" value={newTaskText} onChange={e=>setNewTaskText(e.target.value)} />
+          <input className="time-input" type="number" min={1} value={newTaskMinutes} onChange={e=>setNewTaskMinutes(Math.max(1,Number(e.target.value)))} />
+          <span className="badge">min default when adding</span>
         </div>
       </div>
 
-      {/* Tasks */}
-      <div className="card">
-        <h2>Tasks — <span className="badge">{activeList ? activeList.name : '(no list selected)'}</span></h2>
-        <div className="row">
-          <input placeholder="New task" value={taskText} onChange={e=>setTaskText(e.target.value)} />
-          <input className="time-input" type="number" min={1} value={taskMinutes} onChange={e=>setTaskMinutes(Math.max(1,Number(e.target.value)))} />
-          <span className="badge">min</span>
-          <button onClick={addTask}>Add</button>
-          <button onClick={clearDone} className="ghost">Clear Done</button>
-        </div>
-        <ul>
-          {activeTasks.map(t=> (
-            <li key={t.id}>
-              <div className={`task ${selectedTaskId===t.id?'active':''}`} onClick={()=>selectTask(t)}>
-                <input type="checkbox" checked={t.done} onChange={(e)=>{e.stopPropagation(); toggleTask(t.id);}} />
-                <label onClick={(e)=>e.stopPropagation()}>{t.text}</label>
-                <input className="time-input" type="number" min={1} value={t.minutes??5} onChange={(e)=>setTaskTime(t.id,Math.max(1,Number(e.target.value)))} onClick={(e)=>e.stopPropagation()} />
-                <span className="badge">min</span>
+      <div className="lists-scroller">
+        {lists.map(list => {
+          const listTasks = tasksByList[list.id] || [];
+          const timer = timers[list.id] ?? { running:false, msLeft:0, endTs:0, selectedTaskId: undefined };
+          const selectedTask = listTasks.find(t=>t.id===timer.selectedTaskId);
+          const defaultMinutes = selectedTask?.minutes ?? newTaskMinutes;
+
+          return (
+            <div key={list.id} className="list-card">
+              <h3>
+                <input className="title" value={list.name} onChange={e=>renameList(list.id, e.target.value)} />
+                <button className="ghost" onClick={()=>deleteList(list.id)}>Delete</button>
+              </h3>
+
+              <div className="row">
+                <button onClick={()=>addTask(list.id)}>Add Task</button>
+                <button className="ghost" onClick={()=>clearDone(list.id)}>Clear Done</button>
               </div>
-            </li>
-          ))}
-        </ul>
-      </div>
 
-      {/* Timer */}
-      <div className="card">
-        <h2>Current Active Task Timer</h2>
-        <div className="row">
-          <input type="number" min={1} value={durationMin} onChange={e=>setDurationMin(Math.max(1,Number(e.target.value)))} />
-          <span>minutes (list default / active task)</span>
-          {!running && <button onClick={startTimerSmart}>Start</button>}
-          {running && <button onClick={pause}>Pause</button>}
-          {!running && msLeft>0 && <button onClick={resume}>Resume</button>}
-          <button onClick={stop} className="ghost">Stop/Reset</button>
-        </div>
-        <div className="row">
-          <label><input type="checkbox" checked={completeOnFinish} onChange={e=>setCompleteOnFinish(e.target.checked)} /> Mark task complete on finish</label>
-          <label><input type="checkbox" checked={alarmOnFinish} onChange={e=>setAlarmOnFinish(e.target.checked)} /> Play alarm</label>
-        </div>
-        <div className="row">
-          <strong>Active:</strong> {selectedTask?selectedTask.text:'— (no task selected: using list default)'}
-        </div>
-        <h3>{fmt(msLeft)}</h3>
-        <div className="row">
-          <button onClick={()=>start(25*60*1000)}>Pomodoro 25m</button>
-          <button onClick={()=>start(5*60*1000)}>Break 5m</button>
-        </div>
+              <ul>
+                {listTasks.map(t => (
+                  <li key={t.id}>
+                    <div className={`task ${timer.selectedTaskId===t.id?'active':''}`} onClick={()=>selectTaskForList(list.id, t.id)}>
+                      <input type="checkbox" checked={t.done} onChange={(e)=>{e.stopPropagation(); toggleTask(t.id);}} />
+                      <label onClick={(e)=>e.stopPropagation()}>{t.text}</label>
+                      <input className="time-input" type="number" min={1} value={t.minutes??5}
+                        onChange={(e)=>setTaskTime(t.id, Math.max(1, Number(e.target.value)))} onClick={(e)=>e.stopPropagation()} />
+                      <span className="badge">min</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="timer">
+                <div className="readout">{fmt(timer.msLeft)}</div>
+                <div className="controls">
+                  <input className="time-input" type="number" min={1}
+                    value={Math.max(1, Math.round((timer.running? Math.ceil(timer.msLeft/60000) : (selectedTask?.minutes ?? defaultMinutes))))}
+                    onChange={e=>{
+                      const m = Math.max(1, Number(e.target.value));
+                      if (timer.running) {
+                        // live adjust remaining time
+                        setTimers(st=>({ ...st, [list.id]: { ...timer, msLeft: m*60*1000, endTs: performance.now() + m*60*1000, running:true } }));
+                      }
+                    }} />
+                  <span className="badge">min</span>
+                  {!timer.running && <button onClick={()=>startTimer(list.id, selectedTask?.minutes ?? defaultMinutes, timer.selectedTaskId)}>Start</button>}
+                  {timer.running && <button onClick={()=>pauseTimer(list.id)}>Pause</button>}
+                  {!timer.running && timer.msLeft>0 && <button onClick={()=>resumeTimer(list.id)}>Resume</button>}
+                  <button className="ghost" onClick={()=>stopTimer(list.id)}>Stop/Reset</button>
+                </div>
+                <div className="badge">Active: {selectedTask?selectedTask.text:'— none selected'}</div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

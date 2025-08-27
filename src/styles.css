@@ -1,67 +1,31 @@
+/* Layout */
 body { margin: 0; font-family: system-ui, Segoe UI, Roboto, Ubuntu, sans-serif; background: #0b1220; color: #e5e7eb; }
-.container { max-width: 860px; margin: auto; padding: 1rem; }
-.card { background:#111827; padding:1rem; border-radius:12px; margin-bottom:1rem; box-shadow:0 6px 24px rgba(0,0,0,.25) }
+.container { max-width: 1200px; margin: auto; padding: 1rem; }
+.section { margin-bottom: 1rem; }
+
+/* Horizontal scroller for list cards */
+.lists-scroller { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: .5rem; scroll-snap-type: x mandatory; }
+.list-card { min-width: 320px; max-width: 380px; flex: 0 0 auto; background:#111827; padding:1rem; border-radius:12px; box-shadow:0 6px 24px rgba(0,0,0,.25); scroll-snap-align: start; }
+.list-card h3 { margin: 0 0 .5rem 0; display:flex; align-items:center; gap:.5rem; }
+.list-card input.title { flex:1; background:#0f172a; color:#e5e7eb; border:1px solid #1f2937; border-radius:.6rem; padding:.4rem .6rem }
+
 .row { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap }
 button { background:#0ea5e9; color:#fff; border:none; padding:.6rem 1rem; border-radius:.7rem; cursor:pointer }
 button.ghost { background:transparent; border:1px solid #1f2937 }
-input, select { background:#0f172a; color:#e5e7eb; border:1px solid #1f2937; border-radius:.7rem; padding:.6rem .8rem }
+input, select { background:#0f172a; color:#e5e7eb; border:1px solid #1f2937; border-radius:.7rem; padding:.5rem .8rem }
+
 ul { list-style:none; padding:0; margin:.5rem 0 }
 li { margin:.25rem 0 }
-.task { display:flex; align-items:center; gap:.5rem; padding:.4rem .6rem; border-radius:.6rem }
+.task { display:flex; align-items:center; gap:.5rem; padding:.35rem .5rem; border-radius:.6rem }
 .task.active { outline:2px solid #0ea5e9; outline-offset:2px; }
 .task label { flex:1; display:flex; align-items:center; gap:.5rem }
 .time-input { width:5.5rem; }
 .badge { font-size:.9rem; color:#94a3b8 }
-/* 
-body { margin: 0; font-family: system-ui, Segoe UI, Roboto, Ubuntu, sans-serif; background: #0b1220; color: #e5e7eb; }
-.container { max-width: 860px; margin: auto; padding: 1rem; }
-.card { background:#111827; padding:1rem; border-radius:12px; margin-bottom:1rem; box-shadow:0 6px 24px rgba(0,0,0,.25) }
-.row { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap }
-button { background:#0ea5e9; color:#fff; border:none; padding:.6rem 1rem; border-radius:.7rem; cursor:pointer }
-input, select { background:#0f172a; color:#e5e7eb; border:1px solid #1f2937; border-radius:.7rem; padding:.6rem .8rem }
-ul { list-style:none; padding:0; margin:.5rem 0 }
-li { margin:.25rem 0 }
 
-body {
-  margin: 0;
-  font-family: sans-serif;
-  background: #0b1220;
-  color: #e5e7eb;
-}
+.timer { margin-top:.5rem; padding:.6rem; border:1px dashed #1f2937; border-radius:.6rem; display:flex; flex-direction:column; gap:.5rem }
+.timer .controls { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap }
+.timer .readout { font-size:1.4rem; font-weight:700 }
 
-.container {
-  max-width: 600px;
-  margin: auto;
-  padding: 1rem;
-}
-
-.card {
-  background: #111827;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.row {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-button {
-  background: #0ea5e9;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-}
-
-input[type="text"], input {
-  flex: 1;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  border: 1px solid #1f2937;
-  background: #0f172a;
-  color: white;
-} */
+/* Top bar */
+.topbar { display:flex; gap:.5rem; align-items:center; margin-bottom: .75rem; }
+.topbar input { max-width: 280px; }
