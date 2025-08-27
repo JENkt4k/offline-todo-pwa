@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './styles.css';
+import { useCountdown } from './useCountdown';
 
 interface Task { id: string; text: string; done: boolean; listId: string; minutes?: number }
 interface List { id: string; name: string }
 
 function beep() { try { const ctx = new (window.AudioContext|| (window as any).webkitAudioContext)(); const o=ctx.createOscillator(); const g=ctx.createGain(); o.type='sine'; o.frequency.value=880; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(.001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(.3, ctx.currentTime+.01); o.start(); o.stop(ctx.currentTime+.25);}catch{} }
 
-function useCountdown(){ const[msLeft,setMsLeft]=useState(0); const[running,setRunning]=useState(false); const endTs=useRef(0); const pausedMs=useRef(0); const raf=useRef(0 as number|0); const tick=()=>{const now=performance.now(); const left=Math.max(0,endTs.current-now); setMsLeft(left); if(left<=0){setRunning(false); cancelAnimationFrame(raf.current); return;} raf.current=requestAnimationFrame(tick);}; const start=(dur:number)=>{endTs.current=performance.now()+dur; setMsLeft(dur); setRunning(true); cancelAnimationFrame(raf.current); raf.current=requestAnimationFrame(tick);}; const pause=()=>{if(!running)return; pausedMs.current=msLeft; setRunning(false); cancelAnimationFrame(raf.current)}; const resume=()=>{if(running||pausedMs.current<=0)return; start(pausedMs.current)}; const stop=()=>{setRunning(false); setMsLeft(0); cancelAnimationFrame(raf.current)}; return{msLeft,running,start,pause,resume,stop}; }
+// function useCountdown(){ const[msLeft,setMsLeft]=useState(0); const[running,setRunning]=useState(false); const endTs=useRef(0); const pausedMs=useRef(0); const raf=useRef(0 as number|0); const tick=()=>{const now=performance.now(); const left=Math.max(0,endTs.current-now); setMsLeft(left); if(left<=0){setRunning(false); cancelAnimationFrame(raf.current); return;} raf.current=requestAnimationFrame(tick);}; const start=(dur:number)=>{endTs.current=performance.now()+dur; setMsLeft(dur); setRunning(true); cancelAnimationFrame(raf.current); raf.current=requestAnimationFrame(tick);}; const pause=()=>{if(!running)return; pausedMs.current=msLeft; setRunning(false); cancelAnimationFrame(raf.current)}; const resume=()=>{if(running||pausedMs.current<=0)return; start(pausedMs.current)}; const stop=()=>{setRunning(false); setMsLeft(0); cancelAnimationFrame(raf.current)}; return{msLeft,running,start,pause,resume,stop}; }
 
 function fmt(ms:number){const s=Math.floor(ms/1000); const m=Math.floor(s/60); const ss=s%60; return `${m}:${String(ss).padStart(2,'0')}`;}
 

@@ -1,14 +1,15 @@
+// src/types.ts
 export type Priority = 'low' | 'medium' | 'high';
 
 export interface Todo {
   id: string;
   title: string;
   notes?: string;
-  due?: string; // ISO date
+  due?: string;           // ISO date
   priority: Priority;
   completed: boolean;
-  createdAt: number; // epoch ms
-  updatedAt: number; // epoch ms
+  createdAt: number;      // epoch ms
+  updatedAt: number;      // epoch ms
 }
 
 export interface TimerPreset {
@@ -23,7 +24,7 @@ export interface SessionLog {
   id: string;
   type: 'work' | 'break' | 'custom';
   label?: string;
-  start: number; // epoch ms
-  end: number;   // epoch ms
+  start: number;          // epoch ms
+  end: number;            // epoch ms
   durationMs: number;
 }

@@ -1,21 +1,57 @@
+// src/db.ts
 import { openDB, type DBSchema } from 'idb';
-import type { Todo, SessionLog, TimerPreset } from './types';
+
+interface TodoItem {
+  id: string;
+  title: string;
+  notes?: string;
+  due?: string;
+  priority: 'low'|'medium'|'high';
+  completed: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface SessionItem {
+  id: string;
+  type: 'work' | 'break' | 'custom';
+  label?: string;
+  start: number;
+  end: number;
+  durationMs: number;
+}
+
+interface PresetItem {
+  id: string;
+  name: string;
+  workMs: number;
+  breakMs: number;
+  repeats: number;
+}
 
 interface AppDB extends DBSchema {
   todos: {
-    key: string;
-    value: Todo;
-    indexes: { 'by-completed': boolean; 'by-updatedAt': number };
+    value: TodoItem;
+    key: string;    
+    indexes: {
+      'by-completed': 'completed';
+      'by-updatedAt': 'updatedAt';
+    };
   };
   sessions: {
     key: string;
-    value: SessionLog;
-    indexes: { 'by-start': number; 'by-duration': number };
+    value: SessionItem;
+    indexes: {
+      'by-start': 'start';
+      'by-duration': 'durationMs';
+    };
   };
   presets: {
     key: string;
-    value: TimerPreset;
-    indexes: { 'by-name': string };
+    value: PresetItem;
+    indexes: {
+      'by-name': 'name';
+    };
   };
 }
 
@@ -47,8 +83,8 @@ export async function exportAll() {
 export async function importAll(payload: any) {
   const db = await dbPromise;
   const tx = db.transaction(['todos', 'sessions', 'presets'], 'readwrite');
-  for (const t of payload.todos ?? []) await (await dbPromise).put('todos', t);
-  for (const s of payload.sessions ?? []) await (await dbPromise).put('sessions', s);
-  for (const p of payload.presets ?? []) await (await dbPromise).put('presets', p);
+  for (const t of payload.todos ?? []) await db.put('todos', t);
+  for (const s of payload.sessions ?? []) await db.put('sessions', s);
+  for (const p of payload.presets ?? []) await db.put('presets', p);
   await tx.done;
 }
