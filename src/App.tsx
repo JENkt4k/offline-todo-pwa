@@ -19,6 +19,11 @@ export default function App(){
   const [activeListId,setActiveListId]=useState<string>('default');
   const [selectedTaskId,setSelectedTaskId]=useState<string>('');
 
+  // rename control for active list
+  const activeList = useMemo(()=>lists.find(l=>l.id===activeListId)||null,[lists,activeListId]);
+  const [renameValue, setRenameValue] = useState('');
+  useEffect(()=>{ setRenameValue(activeList?.name || ''); }, [activeListId, activeList?.name]);
+
   const {msLeft,running,start,pause,resume,stop}=useCountdown();
   const [durationMin,setDurationMin]=useState(25);
   const [completeOnFinish,setCompleteOnFinish]=useState(true);
@@ -39,9 +44,7 @@ export default function App(){
   useEffect(()=>{
     if(prevMsRef.current>0 && msLeft===0){
       if(alarmOnFinish) beep();
-      if(completeOnFinish && selectedTaskId){
-        setTasks(ts=>ts.map(t=>t.id===selectedTaskId?{...t,done:true}:t));
-      }
+      if(completeOnFinish && selectedTaskId){ setTasks(ts=>ts.map(t=>t.id===selectedTaskId?{...t,done:true}:t)); }
     }
     prevMsRef.current=msLeft;
   },[msLeft,alarmOnFinish,completeOnFinish,selectedTaskId]);
@@ -49,18 +52,26 @@ export default function App(){
   const activeTasks=useMemo(()=>tasks.filter(t=>t.listId===activeListId),[tasks,activeListId]);
   const selectedTask=useMemo(()=>tasks.find(t=>t.id===selectedTaskId)||null,[tasks,selectedTaskId]);
 
-  const addList=()=>{if(!listName.trim())return; const id=crypto.randomUUID(); setLists([...lists,{id,name:listName.trim()}]); setListName(''); setActiveListId(id)};
-  const deleteList=()=>{if(!activeListId)return; setLists(ls=>ls.filter(l=>l.id!==activeListId)); setTasks(ts=>ts.filter(t=>t.listId!==activeListId)); setActiveListId('default'); setSelectedTaskId('');};
-  const addTask=()=>{if(!taskText.trim())return; const id=crypto.randomUUID(); setTasks([...tasks,{id,text:taskText.trim(),done:false,listId:activeListId||'default',minutes:taskMinutes}]); setTaskText('');};
+  const addList=()=>{ if(!listName.trim())return; const id=crypto.randomUUID(); setLists([...lists,{id,name:listName.trim()}]); setListName(''); setActiveListId(id) };
+  const deleteList=()=>{ if(!activeListId)return; setLists(ls=>ls.filter(l=>l.id!==activeListId)); setTasks(ts=>ts.filter(t=>t.listId!==activeListId)); setActiveListId('default'); setSelectedTaskId(''); };
+  const renameList=()=>{ if(!activeListId) return; setLists(ls=>ls.map(l=>l.id===activeListId?{...l,name:renameValue.trim()||l.name}:l)); };
+
+  const addTask=()=>{ if(!taskText.trim())return; const id=crypto.randomUUID(); setTasks([...tasks,{id,text:taskText.trim(),done:false,listId:activeListId||'default',minutes:taskMinutes}]); setTaskText(''); };
   const toggleTask=(id:string)=>setTasks(ts=>ts.map(t=>t.id===id?{...t,done:!t.done}:t));
-  const setTaskTime=(id:string,minutes:number)=>setTasks(ts=>ts.map(t=>t.id===id?{...t,minutes:Math.max(1,minutes)}:t));
+  const setTaskTime=(id:string,minutes:number)=>{ setTasks(ts=>ts.map(t=>t.id===id?{...t,minutes:Math.max(1,minutes)}:t)); if (id===selectedTaskId) setDurationMin(Math.max(1, minutes)); };
   const clearDone=()=>setTasks(ts=>ts.filter(t=>!(t.done&&t.listId===activeListId)));
 
-  const startTimerSmart=()=>{const mins=selectedTask?.minutes||durationMin; start(mins*60*1000)};
+  // Select a task: highlight and sync control time from that task
+  const selectTask=(t:Task)=>{ setSelectedTaskId(t.id); if (t.minutes && t.minutes>0) setDurationMin(t.minutes); };
+
+  // Start timer: use selected task's minutes if available, else the list-level default
+  const startTimerSmart=()=>{ const mins=selectedTask?.minutes||durationMin; setDurationMin(mins); start(mins*60*1000) };
 
   return(
     <div className="container">
       <h1>Offline To‑Do + Timers</h1>
+
+      {/* Lists */}
       <div className="card">
         <h2>Lists</h2>
         <div className="row">
@@ -71,9 +82,15 @@ export default function App(){
           <button onClick={addList}>Add List</button>
           <button onClick={deleteList}>Delete List</button>
         </div>
+        <div className="row">
+          <input value={renameValue} onChange={e=>setRenameValue(e.target.value)} placeholder="Rename current list" />
+          <button onClick={renameList}>Save Name</button>
+        </div>
       </div>
+
+      {/* Tasks */}
       <div className="card">
-        <h2>Tasks</h2>
+        <h2>Tasks — <span className="badge">{activeList ? activeList.name : '(no list selected)'}</span></h2>
         <div className="row">
           <input placeholder="New task" value={taskText} onChange={e=>setTaskText(e.target.value)} />
           <input className="time-input" type="number" min={1} value={taskMinutes} onChange={e=>setTaskMinutes(Math.max(1,Number(e.target.value)))} />
@@ -82,9 +99,9 @@ export default function App(){
           <button onClick={clearDone} className="ghost">Clear Done</button>
         </div>
         <ul>
-          {activeTasks.map(t=>(
+          {activeTasks.map(t=> (
             <li key={t.id}>
-              <div className={`task ${selectedTaskId===t.id?'active':''}`} onClick={()=>setSelectedTaskId(t.id)}>
+              <div className={`task ${selectedTaskId===t.id?'active':''}`} onClick={()=>selectTask(t)}>
                 <input type="checkbox" checked={t.done} onChange={(e)=>{e.stopPropagation(); toggleTask(t.id);}} />
                 <label onClick={(e)=>e.stopPropagation()}>{t.text}</label>
                 <input className="time-input" type="number" min={1} value={t.minutes??5} onChange={(e)=>setTaskTime(t.id,Math.max(1,Number(e.target.value)))} onClick={(e)=>e.stopPropagation()} />
@@ -94,11 +111,13 @@ export default function App(){
           ))}
         </ul>
       </div>
+
+      {/* Timer */}
       <div className="card">
         <h2>Current Active Task Timer</h2>
         <div className="row">
           <input type="number" min={1} value={durationMin} onChange={e=>setDurationMin(Math.max(1,Number(e.target.value)))} />
-          <span>minutes (list default)</span>
+          <span>minutes (list default / active task)</span>
           {!running && <button onClick={startTimerSmart}>Start</button>}
           {running && <button onClick={pause}>Pause</button>}
           {!running && msLeft>0 && <button onClick={resume}>Resume</button>}

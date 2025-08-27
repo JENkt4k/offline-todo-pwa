@@ -12,7 +12,7 @@ li { margin:.25rem 0 }
 .task label { flex:1; display:flex; align-items:center; gap:.5rem }
 .time-input { width:5.5rem; }
 .badge { font-size:.9rem; color:#94a3b8 }
-
+/* 
 body { margin: 0; font-family: system-ui, Segoe UI, Roboto, Ubuntu, sans-serif; background: #0b1220; color: #e5e7eb; }
 .container { max-width: 860px; margin: auto; padding: 1rem; }
 .card { background:#111827; padding:1rem; border-radius:12px; margin-bottom:1rem; box-shadow:0 6px 24px rgba(0,0,0,.25) }
@@ -64,4 +64,4 @@ input[type="text"], input {
   border: 1px solid #1f2937;
   background: #0f172a;
   color: white;
-}
+} */
