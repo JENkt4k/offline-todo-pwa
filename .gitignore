@@ -1,0 +1,34 @@
+# Node.js
+node_modules/
+dist/
+.temp/
+.cache/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS-generated
+.DS_Store
+Thumbs.db
+
+# VSCode/IDE
+.vscode/
+.idea/
+*.sw?
+
+# PWA / Vite cache
+*.log
+.env.local
+.env.*
+!.env.example
+
+# Build outputs
+public/pwa-icon-192.png
+public/pwa-icon-512.png
+
+# Deployment artifacts
+gh-pages/
+node_modules/*
