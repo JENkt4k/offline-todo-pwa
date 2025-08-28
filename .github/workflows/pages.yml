@@ -17,6 +17,11 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # ✅ For project pages (https://<user>.github.io/<REPO>/):
+      VITE_BASE_PATH: "/${{ github.event.repository.name }}/"
+      # For user/org site repos (https://<user>.github.io): set to "/"
+      # VITE_BASE_PATH: "/"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
