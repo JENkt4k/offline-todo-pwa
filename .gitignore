@@ -22,7 +22,7 @@ Thumbs.db
 # PWA / Vite cache
 *.log
 .env.local
-# .env.*
+.env.*
 !.env.example
 
 # Build outputs
