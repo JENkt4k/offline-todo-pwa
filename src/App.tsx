@@ -118,8 +118,10 @@ export default function App(){
     <div className="container">
       <div className="topbar section">
         {!installed && installEvt && <button onClick={onInstallClick}>Install App</button>}
-        <input placeholder="New list name" value={newListName} onChange={e=>setNewListName(e.target.value)} />
-        <button onClick={addList}>Add List</button>
+        <div className="toprow">
+          <input placeholder="New list name" value={newListName} onChange={e=>setNewListName(e.target.value)} />
+          <button onClick={addList}>Add List</button>
+        </div>
       </div>
 
       <div className="lists-scroller">
