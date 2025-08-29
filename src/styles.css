@@ -30,3 +30,65 @@ li { margin:.25rem 0 }
 /* Top bar */
 .topbar { display:flex; gap:.5rem; align-items:center; margin-bottom: .75rem; }
 .topbar input { max-width: 280px; }
+
+/* --- Mobile/responsive tweaks --- */
+.sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(11,18,32,0.85);
+  backdrop-filter: blur(6px);
+  padding-top: .5rem;
+  padding-bottom: .5rem;
+  border-bottom: 1px solid #1f2937;
+}
+
+/* Better tap targets (prevents iOS zoom) */
+button, input, select {
+  font-size: 16px; /* ≥16px avoids iOS zoom */
+}
+
+/* Larger checkbox hit area on touch */
+.task input[type="checkbox"] {
+  transform: scale(1.25);
+}
+
+/* Tighten spacing on very small screens */
+@media (max-width: 640px) {
+  .container { padding: .75rem; }
+  .row { gap: .4rem; }
+
+  /* Turn horizontal scroller into vertical stack */
+  .lists-scroller {
+    flex-direction: column;
+    overflow-x: visible;
+    gap: .75rem;
+    padding-bottom: 0;
+    scroll-snap-type: none;
+  }
+  .list-card {
+    min-width: auto;
+    width: 100%;
+    padding: .85rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.25);
+  }
+
+  /* Inputs/buttons scale a bit for fingers */
+  input, select, button { padding: .65rem .9rem; }
+  /* .time-input { width: 3.5rem; } */
+
+  /* Timer readout and controls */
+  .timer .readout { font-size: 1.8rem; }
+  .timer .controls { flex-wrap: wrap; }
+}
+
+/* Medium screens: show 2-up cards if viewport allows */
+@media (min-width: 641px) and (max-width: 900px) {
+  .lists-scroller {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  .list-card { min-width: 0; max-width: none; }
+}
