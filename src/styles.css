@@ -31,59 +31,84 @@ li { margin:.25rem 0 }
 .topbar { display:flex; gap:.5rem; align-items:center; margin-bottom: .75rem; }
 .topbar input { max-width: 280px; }
 
-/* --- Mobile/responsive tweaks --- */
-.sticky {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: rgba(11,18,32,0.85);
-  backdrop-filter: blur(6px);
-  padding-top: .5rem;
-  padding-bottom: .5rem;
-  border-bottom: 1px solid #1f2937;
+/* ---- Mobile comfort defaults ---- */
+:root {
+  --ui-gap: 0.5rem;
+  --ui-pad: 0.65rem 0.9rem;
+  --ui-radius: 12px;
 }
 
-/* Better tap targets (prevents iOS zoom) */
-button, input, select {
-  font-size: 16px; /* ≥16px avoids iOS zoom */
+/* Prevent iOS/Android input zoom (>=16px) and enlarge hit areas */
+button, input, select, label {
+  font-size: 16px;
+  line-height: 1.25;
 }
 
-/* Larger checkbox hit area on touch */
-.task input[type="checkbox"] {
-  transform: scale(1.25);
+button {
+  min-height: 44px;         /* comfortable tap target */
+  padding: var(--ui-pad);
+  border-radius: var(--ui-radius);
 }
 
-/* Tighten spacing on very small screens */
+input, select {
+  min-height: 44px;
+  padding: var(--ui-pad);
+  border-radius: var(--ui-radius);
+}
+
+/* Subtle touch highlight + no accidental double-tap zoom */
+* { -webkit-tap-highlight-color: rgba(255,255,255,0.08); touch-action: manipulation; }
+
+/* Page padding a bit tighter on phones */
 @media (max-width: 640px) {
-  .container { padding: .75rem; }
-  .row { gap: .4rem; }
+  body { font-size: 17px; }                 /* globally a bit larger */
+  .container { max-width: 100%; padding: 0.75rem; }
 
-  /* Turn horizontal scroller into vertical stack */
+  /* Top bar stays visible and stacks nicely */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(11,18,32,0.9);
+    backdrop-filter: blur(6px);
+    padding: 0.5rem;
+    border-bottom: 1px solid #1f2937;
+    display: flex; flex-wrap: wrap; gap: var(--ui-gap);
+  }
+  .topbar input, .topbar button { flex: 1 1 100%; }
+
+  /* Card list becomes vertical stack (full width) */
   .lists-scroller {
-    flex-direction: column;
-    overflow-x: visible;
-    gap: .75rem;
-    padding-bottom: 0;
+    display: flex; flex-direction: column;
+    gap: 0.75rem; overflow: visible; padding-bottom: 0;
     scroll-snap-type: none;
   }
   .list-card {
-    min-width: auto;
-    width: 100%;
-    padding: .85rem;
-    border-radius: 10px;
+    min-width: auto; width: 100%;
+    padding: 0.9rem; border-radius: 12px;
     box-shadow: 0 4px 18px rgba(0,0,0,.25);
   }
 
-  /* Inputs/buttons scale a bit for fingers */
-  input, select, button { padding: .65rem .9rem; }
-  /* .time-input { width: 3.5rem; } */
+  /* Row elements stack by default on narrow screens */
+  .row { gap: var(--ui-gap); flex-wrap: wrap; }
+  .row > * { flex: 1 1 100%; }
 
-  /* Timer readout and controls */
-  .timer .readout { font-size: 1.8rem; }
-  .timer .controls { flex-wrap: wrap; }
+  /* Task item spacing + controls readable */
+  .task { gap: 0.5rem; padding: 0.5rem 0.6rem; }
+  .task label { font-size: 16px; }
+  .task input[type="checkbox"] { transform: scale(1.25); } /* larger checkbox */
+
+  /* Minutes inputs: numeric keypad and compact width */
+  .time-input {
+    width: 2.25rem;   /* ~2–3 digits + label */
+    text-align: center;
+  }
+
+  /* Timer block: bigger readout, wrapping controls */
+  .timer .readout { font-size: 1.8rem; font-weight: 700; }
+  .timer .controls { display: flex; flex-wrap: wrap; gap: var(--ui-gap); }
+  .timer .controls > * { flex: 1 1 auto; }
 }
 
-/* Medium screens: show 2-up cards if viewport allows */
+/* Mid screens (phablets/small tablets): two columns if space allows */
 @media (min-width: 641px) and (max-width: 900px) {
   .lists-scroller {
     display: grid;
