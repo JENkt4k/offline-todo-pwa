@@ -7,8 +7,6 @@ interface List { id: string; name: string }
 
 function beep() { try { const ctx = new (window.AudioContext|| (window as any).webkitAudioContext)(); const o=ctx.createOscillator(); const g=ctx.createGain(); o.type='sine'; o.frequency.value=880; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(.001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(.3, ctx.currentTime+.01); o.start(); o.stop(ctx.currentTime+.25);}catch{} }
 
-// function useCountdown(){ const[msLeft,setMsLeft]=useState(0); const[running,setRunning]=useState(false); const endTs=useRef(0); const pausedMs=useRef(0); const raf=useRef(0 as number|0); const tick=()=>{const now=performance.now(); const left=Math.max(0,endTs.current-now); setMsLeft(left); if(left<=0){setRunning(false); cancelAnimationFrame(raf.current); return;} raf.current=requestAnimationFrame(tick);}; const start=(dur:number)=>{endTs.current=performance.now()+dur; setMsLeft(dur); setRunning(true); cancelAnimationFrame(raf.current); raf.current=requestAnimationFrame(tick);}; const pause=()=>{if(!running)return; pausedMs.current=msLeft; setRunning(false); cancelAnimationFrame(raf.current)}; const resume=()=>{if(running||pausedMs.current<=0)return; start(pausedMs.current)}; const stop=()=>{setRunning(false); setMsLeft(0); cancelAnimationFrame(raf.current)}; return{msLeft,running,start,pause,resume,stop}; }
-
 function fmt(ms:number){const s=Math.floor(ms/1000); const m=Math.floor(s/60); const ss=s%60; return `${m}:${String(ss).padStart(2,'0')}`;}
 
 /** Per-list timer state */
@@ -124,14 +122,6 @@ export default function App(){
         {!installed && installEvt && <button onClick={onInstallClick}>Install App</button>}
       </div>
 
-      <div className="section">
-        <div className="row">
-          <input placeholder="New task text" value={newTaskText} onChange={e=>setNewTaskText(e.target.value)} />
-          <input className="time-input" type="number" min={1} value={newTaskMinutes} onChange={e=>setNewTaskMinutes(Math.max(1,Number(e.target.value)))} />
-          <span className="badge">min default when adding</span>
-        </div>
-      </div>
-
       <div className="lists-scroller">
         {lists.map(list => {
           const listTasks = tasksByList[list.id] || [];
@@ -143,12 +133,19 @@ export default function App(){
             <div key={list.id} className="list-card">
               <h3>
                 <input className="title" value={list.name} onChange={e=>renameList(list.id, e.target.value)} />
-                <button className="ghost" onClick={()=>deleteList(list.id)}>Delete</button>
+                <button className="ghost" onClick={()=>deleteList(list.id)}>&#128465;</button>
               </h3>
 
               <div className="row">
-                <button onClick={()=>addTask(list.id)}>Add Task</button>
-                <button className="ghost" onClick={()=>clearDone(list.id)}>Clear Done</button>
+                <input placeholder="New task text" value={newTaskText} onChange={e=>setNewTaskText(e.target.value)} />
+                <span className="badge">&#9201;</span>
+                <input className="time-input" type="number" min={1} value={newTaskMinutes} onChange={e=>setNewTaskMinutes(Math.max(1,Number(e.target.value)))} />
+                <button onClick={()=>addTask(list.id)}>+</button>
+                
+              </div>
+
+              <div className="row">
+                <button className="ghost center" onClick={()=>clearDone(list.id)}>Clear Completed</button>
               </div>
 
               <ul>
@@ -166,24 +163,15 @@ export default function App(){
               </ul>
 
               <div className="timer">
+                <div className="badge">Active Task: {selectedTask?selectedTask.text:'— none selected'}</div>
                 <div className="readout">{fmt(timer.msLeft)}</div>
                 <div className="controls">
-                  <input className="time-input" type="number" min={1}
-                    value={Math.max(1, Math.round((timer.running? Math.ceil(timer.msLeft/60000) : (selectedTask?.minutes ?? defaultMinutes))))}
-                    onChange={e=>{
-                      const m = Math.max(1, Number(e.target.value));
-                      if (timer.running) {
-                        // live adjust remaining time
-                        setTimers(st=>({ ...st, [list.id]: { ...timer, msLeft: m*60*1000, endTs: performance.now() + m*60*1000, running:true } }));
-                      }
-                    }} />
-                  <span className="badge">min</span>
                   {!timer.running && <button onClick={()=>startTimer(list.id, selectedTask?.minutes ?? defaultMinutes, timer.selectedTaskId)}>Start</button>}
                   {timer.running && <button onClick={()=>pauseTimer(list.id)}>Pause</button>}
                   {!timer.running && timer.msLeft>0 && <button onClick={()=>resumeTimer(list.id)}>Resume</button>}
                   <button className="ghost" onClick={()=>stopTimer(list.id)}>Stop/Reset</button>
                 </div>
-                <div className="badge">Active: {selectedTask?selectedTask.text:'— none selected'}</div>
+                
               </div>
             </div>
           );
