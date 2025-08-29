@@ -73,7 +73,7 @@ input, select {
     display: flex; flex-wrap: wrap; gap: var(--ui-gap);
   }
   .topbar input, .topbar button { flex: 1 1 100%; }
-  .topbar .toprow { display:flex;  align-items:center; justify-content: space-between; width: 100%; }
+  .topbar .toprow { display:flex; gap: 0.5rem; align-items:center; justify-content: space-between; width: 100%; }
   .topbar .toprow input { max-width: 400px; flex: 4; }
   .topbar .toprow button { flex: 1; }
 
