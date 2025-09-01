@@ -31,6 +31,12 @@ li { margin:.25rem 0 }
 .topbar { display:flex; gap:.5rem; align-items:center; margin-bottom: .75rem; }
 .topbar input { max-width: 280px; }
 
+.seg { display:inline-flex; border:1px solid #1f2937; border-radius:10px; overflow:hidden; }
+.seg-btn { background:#0f172a; padding:.5rem .9rem; border:none; color:#e5e7eb; }
+.seg-btn.active { background:#0ea5e9; color:#fff; }
+.chips { display:flex; gap:.5rem; margin-top:.5rem; flex-wrap:wrap; }
+.chip { background:#0f172a; border:1px solid #1f2937; border-radius:999px; padding:.35rem .7rem; }
+
 /* ---- Mobile comfort defaults ---- */
 :root {
   --ui-gap: 0.5rem;

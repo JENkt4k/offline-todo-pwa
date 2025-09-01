@@ -1,30 +1,38 @@
-// src/types.ts
-export type Priority = 'low' | 'medium' | 'high';
+export type SessionType = 'timer' | 'stopwatch';
 
-export interface Todo {
-  id: string;
-  title: string;
-  notes?: string;
-  due?: string;           // ISO date
-  priority: Priority;
-  completed: boolean;
-  createdAt: number;      // epoch ms
-  updatedAt: number;      // epoch ms
+
+export interface Task {
+id: string;
+text: string;
+done: boolean;
+listId: string;
+minutes?: number;
 }
 
-export interface TimerPreset {
-  id: string;
-  name: string;
-  workMs: number;
-  breakMs: number;
-  repeats: number;
+
+export interface List { id: string; name: string }
+
+
+export interface TimerState {
+running: boolean;
+msLeft: number;
+endTs: number;
+selectedTaskId?: string;
 }
+
+
+export interface StopwatchState {
+running: boolean;
+msElapsed: number;
+startTs: number|null;
+selectedTaskId?: string;
+}
+
 
 export interface SessionLog {
-  id: string;
-  type: 'work' | 'break' | 'custom';
-  label?: string;
-  start: number;          // epoch ms
-  end: number;            // epoch ms
-  durationMs: number;
+id: string;
+taskId: string;
+durationMs: number;
+type: SessionType;
+ts: number;
 }
